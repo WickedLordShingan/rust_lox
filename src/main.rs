@@ -1,3 +1,4 @@
+mod ast;
 mod error;
 mod running;
 mod scanner;
