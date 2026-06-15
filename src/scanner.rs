@@ -6,7 +6,7 @@ use crate::token::{self, Literal, Token, TokenType};
 
 pub struct Scanner {
     source: String,
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
     start: usize,
     current: usize,
     line: usize,
@@ -54,10 +54,6 @@ impl Scanner {
             literal: Some(Literal::Nil),
             line: self.line,
         });
-    }
-
-    fn is_at_end(&self) -> bool {
-        self.current >= self.source.len()
     }
 
     fn scan_token(&mut self, lox: &mut Lox) {
@@ -197,7 +193,10 @@ impl Scanner {
         self.add_token_with_literal(TokenType::String, Literal::Str(string_val));
     }
 
-    //STATE MODIFIERS AND INFO
+    fn is_at_end(&self) -> bool {
+        self.current >= self.source.len()
+    }
+
     fn peek(&self) -> char {
         if self.is_at_end() {
             return '\0';

@@ -1,6 +1,8 @@
 #![allow(unused)]
 
+use crate::ast::pretty_print;
 use crate::error::{ErrorKind, Lox, report};
+use crate::parser::Parser;
 use crate::scanner::Scanner;
 use std::fs;
 use std::io::{self, BufRead, Write};
@@ -36,4 +38,14 @@ pub fn runprompt(lox: &mut Lox) {
 fn run(lox: &mut Lox, source: &str) {
     let mut scanner = Scanner::init(source.to_string());
     scanner.scan_tokens(lox);
+
+    if lox.had_error {
+        return;
+    }
+
+    let mut parser = Parser::init(scanner.tokens);
+    let expr = parser.expression(lox);
+    let expression_as_string = pretty_print(&expr);
+
+    println!("{expression_as_string}");
 }

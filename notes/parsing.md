@@ -7,3 +7,7 @@ Nonterminal              Call to that rule’s function
 |                        if or switch statement
 * or +                   while or for loop
 ?                        if statement
+
+- even though our grammar changed the variants of expression stay the same (binary, unary, literal, grouping)
+ - we need more helpers just like the lexer (like peek and advance)
+ - and the functions here consume tokens and return an expression

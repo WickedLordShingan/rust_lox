@@ -34,6 +34,7 @@ unary          → ...
 primary        → ...
 `
 expression     → equality
+equality       → equality ("==" | "!=") comparison | comparison 
 comparison     → comparison ( ">" | ">=" | "<" | "<=" ) term | term ;
 term           → term ("-" | "+") factor | factor
 factor         → factor ("*" | "/") unary | unary
@@ -42,7 +43,12 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
                | "(" expression ")" ;
 `
  - instead of the left left-recursive form there is another one that only references the rule just below it.
+ - A → A α | β     becomes     A → β α*
+ - the above is known as left recursion elimination
 `
 term → factor (("-" | "+") factor)*
 factor → unary (("*" | "/") unary)*
+equality → comparison (("==" | "!=") comparison)*
+similarly for comparison too
 `
+ - LL(k), LR(1), LALR—along with more exotic beasts like parser combinators, Earley parsers, the shunting yard algorithm, and packrat parsing.

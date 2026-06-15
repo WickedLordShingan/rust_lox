@@ -1,5 +1,6 @@
 mod ast;
 mod error;
+mod parser;
 mod running;
 mod scanner;
 mod token;
