@@ -11,3 +11,15 @@ Nonterminal              Call to that rule’s function
 - even though our grammar changed the variants of expression stay the same (binary, unary, literal, grouping)
  - we need more helpers just like the lexer (like peek and advance)
  - and the functions here consume tokens and return an expression
+
+# ERROR HANDLING
+ - be fast
+ - dont quit after the first error
+ - Minimize cascaded errors. errors caused by just one error. For example
+`
+  x = 0
+  x.as_string()
+  x.len()
+  x.iter()
+`
+ - In Lox, values are created by literals, computed by expressions, and stored in variables.

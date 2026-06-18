@@ -1,9 +1,11 @@
 mod ast;
 mod error;
+mod interpreter;
 mod parser;
 mod running;
 mod scanner;
 mod token;
+mod value;
 
 use error::Lox;
 use running::{runfile, runprompt};

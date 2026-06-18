@@ -2,6 +2,7 @@
 
 use crate::ast::pretty_print;
 use crate::error::{ErrorKind, Lox, report};
+use crate::interpreter::interpret;
 use crate::parser::Parser;
 use crate::scanner::Scanner;
 use std::fs;
@@ -45,7 +46,15 @@ fn run(lox: &mut Lox, source: &str) {
 
     let mut parser = Parser::init(scanner.tokens);
     let expr = parser.expression(lox);
-    let expression_as_string = pretty_print(&expr);
 
+    if lox.had_error {
+        return;
+    }
+
+    let expression_as_string = pretty_print(&expr);
     println!("{expression_as_string}");
+
+    if let Some(val) = interpret(&expr, lox) {
+        println!("{val}")
+    }
 }

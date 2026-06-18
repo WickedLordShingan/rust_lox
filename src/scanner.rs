@@ -187,7 +187,10 @@ impl Scanner {
                     col: Some(u32::try_from(self.current).unwrap()),
                 },
             );
+            return;
         }
+
+        self.advance();
 
         let string_val = (self.source)[self.start + 1..self.current - 1].to_string();
         self.add_token_with_literal(TokenType::String, Literal::Str(string_val));
