@@ -46,9 +46,9 @@ primary        → NUMBER | STRING | "true" | "false" | "nil"
  - A → A α | β     becomes     A → β α*
  - the above is known as left recursion elimination
 `
+equality → comparison (("==" | "!=") comparison)*
+comparison → term (( ">" | ">=" | "<" | "<=" ) term)*
 term → factor (("-" | "+") factor)*
 factor → unary (("*" | "/") unary)*
-equality → comparison (("==" | "!=") comparison)*
-similarly for comparison too
 `
  - LL(k), LR(1), LALR—along with more exotic beasts like parser combinators, Earley parsers, the shunting yard algorithm, and packrat parsing.

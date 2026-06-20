@@ -1,5 +1,6 @@
 use crate::token::{Literal, Token};
 
+#[derive(Debug)]
 pub enum Expr {
     Literal {
         value: Option<Literal>,
@@ -16,6 +17,13 @@ pub enum Expr {
     Grouping {
         expression: Box<Expr>,
     },
+}
+
+#[derive(Debug)]
+pub enum Statement {
+    ExprStatement(Expr),
+    PrintStatement(Expr),
+    AssignStatement(Token, Expr),
 }
 
 pub fn pretty_print(expr: &Expr) -> String {

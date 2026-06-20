@@ -1,0 +1,2 @@
+[Token { token_type: Print, lexeme: "print", literal: Some(Nil), line: 1 }, Token { token_type: Identifier, lexeme: "as", literal: Some(Nil), line: 1 }, Token { token_type: Semicolon, lexeme: ";", literal: Some(Nil), line: 1 }, Token { token_type: Eof, lexeme: "", literal: Some(Nil), line: 2 }]
+Literal { value: None }

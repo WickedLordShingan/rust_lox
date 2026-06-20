@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::ast::Expr;
+use crate::ast::{Expr, Statement};
 use crate::error::{ErrorKind, Lox, report};
 use crate::token::{self, Literal, Token, TokenType};
 
@@ -12,6 +12,36 @@ pub struct Parser {
 impl Parser {
     pub fn init(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
+    }
+
+    pub fn parse(&mut self, lox: &mut Lox) -> Vec<Statement> {
+        let mut statements = Vec::new();
+        while !(self.is_at_end()) {
+            statements.push(self.statement(lox));
+        }
+        statements
+    }
+
+    fn statement(&mut self, lox: &mut Lox) -> Statement {
+        if self.match_types(vec![TokenType::Print]) {
+            return self.print_statement(lox);
+        }
+        self.expression_statement(lox)
+    }
+
+    fn print_statement(&mut self, lox: &mut Lox) -> Statement {
+        // println!("before");
+        let expr = self.expression(lox);
+        // println!("{:?}", expr);
+        // println!("after");
+        self.consume(lox, TokenType::Semicolon, "Expect ';' after value.");
+        Statement::PrintStatement(expr)
+    }
+
+    fn expression_statement(&mut self, lox: &mut Lox) -> Statement {
+        let expr = self.expression(lox);
+        self.consume(lox, TokenType::Semicolon, "Expect ';' after expression.");
+        Statement::ExprStatement(expr)
     }
 
     pub fn expression(&mut self, lox: &mut Lox) -> Expr {
@@ -94,20 +124,26 @@ impl Parser {
     }
 
     fn primary(&mut self, lox: &mut Lox) -> Expr {
-        if self.match_types(vec![
-            TokenType::Number,
-            TokenType::String,
-            TokenType::True,
-            TokenType::False,
-            TokenType::Nil,
-        ]) {
+        if self.match_types(vec![TokenType::Number, TokenType::String, TokenType::Nil]) {
             return Expr::Literal {
                 value: self.previous_token().unwrap().literal.clone(),
             };
         }
 
+        if self.match_types(vec![TokenType::False]) {
+            return Expr::Literal {
+                value: Some(Literal::Bool(false)),
+            };
+        }
+
+        if self.match_types(vec![TokenType::True]) {
+            return Expr::Literal {
+                value: Some(Literal::Bool(true)),
+            };
+        }
+
         if self.match_types(vec![TokenType::LeftParen]) {
-            let expr = self.equality(lox);
+            let expr = self.expression(lox);
             self.consume(lox, TokenType::RightParen, "Expect ')' after expression.");
             return Expr::Grouping {
                 expression: Box::new(expr),
@@ -132,12 +168,15 @@ impl Parser {
         if self.check(&token_type) {
             return self.advance();
         }
-        let token = self.peek().unwrap();
+        let line = self
+            .peek()
+            .map_or(self.tokens.last().unwrap().line, |t| t.line);
+
         report(
             lox,
             ErrorKind::WithLocation {
                 message: message.to_string(),
-                line: token.line as u32,
+                line: line as u32,
                 col: None,
             },
         );
@@ -162,7 +201,9 @@ impl Parser {
     }
 
     fn is_at_end(&self) -> bool {
-        if self.current >= self.tokens.len() {
+        if self.current >= self.tokens.len()
+            || self.tokens[self.current].token_type == TokenType::Eof
+        {
             return true;
         }
         false
@@ -184,7 +225,7 @@ impl Parser {
     }
 
     fn previous_token(&self) -> Option<&Token> {
-        if self.current == 0 || self.current > self.tokens.len() {
+        if self.current == 0 || (self.current > self.tokens.len()) {
             return None;
         }
         Some(&self.tokens[self.current - 1])

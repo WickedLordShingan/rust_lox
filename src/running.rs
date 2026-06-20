@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::ast::pretty_print;
+use crate::ast::{Statement, pretty_print};
 use crate::error::{ErrorKind, Lox, report};
 use crate::interpreter::interpret;
 use crate::parser::Parser;
@@ -44,17 +44,15 @@ fn run(lox: &mut Lox, source: &str) {
         return;
     }
 
+    // println!("{:?}", scanner.tokens);
     let mut parser = Parser::init(scanner.tokens);
-    let expr = parser.expression(lox);
+
+    let stmts = parser.parse(lox);
+    // println!("{:?}", stmts);
 
     if lox.had_error {
         return;
     }
 
-    let expression_as_string = pretty_print(&expr);
-    println!("{expression_as_string}");
-
-    if let Some(val) = interpret(&expr, lox) {
-        println!("{val}")
-    }
+    interpret(&stmts, lox);
 }

@@ -1,12 +1,32 @@
 #![allow(unused)]
 
-use crate::ast::Expr;
+use crate::ast::{Expr, Statement};
 use crate::error::{ErrorKind, Lox, report};
 use crate::token::{self, Token, TokenType};
-use crate::value::*;
+use crate::value::{self, *};
 
-pub fn interpret(expr: &Expr, lox: &mut Lox) -> Option<Value> {
-    evaluate(expr, lox)
+// pub fn interpret(expr: &Expr, lox: &mut Lox) -> Option<Value> {
+//     evaluate(expr, lox)
+// }
+
+pub fn execute(stmt: &Statement, lox: &mut Lox) {
+    match stmt {
+        Statement::PrintStatement(expr) => {
+            // println!("{:?}", expr);
+            if let Some(value) = evaluate(expr, lox) {
+                println!("{value}");
+            }
+        }
+        Statement::ExprStatement(expr) => {
+            evaluate(expr, lox);
+        }
+    }
+}
+
+pub fn interpret(statements: &Vec<Statement>, lox: &mut Lox) {
+    for stmt in statements {
+        execute(stmt, lox);
+    }
 }
 
 fn evaluate(expression: &Expr, lox: &mut Lox) -> Option<Value> {

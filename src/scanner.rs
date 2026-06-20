@@ -218,7 +218,7 @@ impl Scanner {
         if (self.is_at_end()) {
             return false;
         };
-        if (self.advance() != expected) {
+        if (self.peek() != expected) {
             return false;
         }
         self.current += 1;
