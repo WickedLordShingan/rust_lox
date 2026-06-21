@@ -2,6 +2,7 @@ use std::fmt::{self, Display};
 
 use crate::token::Literal;
 
+#[derive(Clone, Debug)]
 pub enum Value {
     Str(String),
     Num(f64),

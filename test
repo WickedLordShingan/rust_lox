@@ -1,2 +1,11 @@
-[Token { token_type: Print, lexeme: "print", literal: Some(Nil), line: 1 }, Token { token_type: Identifier, lexeme: "as", literal: Some(Nil), line: 1 }, Token { token_type: Semicolon, lexeme: ";", literal: Some(Nil), line: 1 }, Token { token_type: Eof, lexeme: "", literal: Some(Nil), line: 2 }]
-Literal { value: None }
+[AssignStatement { token: Some(Token { token_type: Identifier, lexeme: "s", literal: Some(Nil), line: 1 }), expression: Some(Literal { value: Some(Num(2.0)) }) }, AssignStatement { token: Some(Token { token_type: Identifier, lexeme: "b", literal: Some(Nil), line: 2 }), expression: Some(Literal { value: Some(Num(4.0)) }) }, AssignStatement { token: Some(Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 3 }), expression: Some(Literal { value: Some(Num(4.0)) }) }, PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "s", literal: Some(Nil), line: 5 } }), PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "b", literal: Some(Nil), line: 6 } }), PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 7 } }), 
+ExprStatement(Assignment { name: Token { token_type: Identifier, lexeme: "s", literal: Some(Nil), line: 9 },
+value: Assignment { name: Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 9 },
+value: Assignment { name: Token { token_type: Identifier, lexeme: "b", literal: Some(Nil), line: 9 },
+value: Literal { value: Some(Num(1.0)) } } } }), PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "s", literal: Some(Nil), line: 11 } }), PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "b", literal: Some(Nil), line: 12 } }), PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 13 } })]
+Integer : 2
+Integer : 4
+Integer : 4
+nandemonai desuga
+Integer : 1
+nandemonai desuga

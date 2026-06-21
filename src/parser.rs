@@ -1,8 +1,11 @@
 #![allow(unused)]
 
+use std::vec;
+
 use crate::ast::{Expr, Statement};
-use crate::error::{ErrorKind, Lox, report};
+use crate::error::{self, ErrorKind, Lox, report};
 use crate::token::{self, Literal, Token, TokenType};
+use crate::value::{self, Value};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -17,23 +20,68 @@ impl Parser {
     pub fn parse(&mut self, lox: &mut Lox) -> Vec<Statement> {
         let mut statements = Vec::new();
         while !(self.is_at_end()) {
-            statements.push(self.statement(lox));
+            if let Some(statement) = self.declaration(lox) {
+                statements.push(statement);
+            }
         }
         statements
+    }
+
+    fn declaration(&mut self, lox: &mut Lox) -> Option<Statement> {
+        if self.match_types(vec![TokenType::Var]) {
+            return Some(self.var_declaration(lox));
+        }
+        let temp = self.statement(lox);
+        if lox.had_error {
+            self.synchronize();
+            lox.had_error = false;
+            return None;
+        }
+        Some(temp)
+    }
+
+    fn var_declaration(&mut self, lox: &mut Lox) -> Statement {
+        let name = self
+            .consume(lox, TokenType::Identifier, "Expected a variable name")
+            .cloned();
+        let mut initializer = None;
+        if (self.match_types(vec![TokenType::Equal])) {
+            initializer = Some(self.expression(lox));
+        }
+        self.consume(
+            lox,
+            TokenType::Semicolon,
+            "Expect ';' after variable declaration.",
+        );
+        Statement::AssignStatement {
+            token: name,
+            expression: initializer,
+        }
     }
 
     fn statement(&mut self, lox: &mut Lox) -> Statement {
         if self.match_types(vec![TokenType::Print]) {
             return self.print_statement(lox);
         }
+        if self.match_types(vec![TokenType::LeftBrace]) {
+            return Statement::BlockStatement(self.block_statement(lox));
+        }
         self.expression_statement(lox)
     }
 
+    fn block_statement(&mut self, lox: &mut Lox) -> Vec<Statement> {
+        let mut statements: Vec<Statement> = Vec::new();
+        while !self.check(&TokenType::RightBrace) {
+            if let Some(statement) = self.declaration(lox) {
+                statements.push(statement);
+            }
+        }
+        self.consume(lox, TokenType::RightBrace, "Expected '}' after a block");
+        statements
+    }
+
     fn print_statement(&mut self, lox: &mut Lox) -> Statement {
-        // println!("before");
         let expr = self.expression(lox);
-        // println!("{:?}", expr);
-        // println!("after");
         self.consume(lox, TokenType::Semicolon, "Expect ';' after value.");
         Statement::PrintStatement(expr)
     }
@@ -45,9 +93,31 @@ impl Parser {
     }
 
     pub fn expression(&mut self, lox: &mut Lox) -> Expr {
-        self.equality(lox)
+        self.assignment(lox)
     }
 
+    fn assignment(&mut self, lox: &mut Lox) -> Expr {
+        let variable = self.equality(lox);
+        if (self.match_types(vec![TokenType::Equal])) {
+            let line_no = self.previous_token().unwrap().line;
+            let remaining = self.assignment(lox);
+            if let Expr::Variable { name } = variable {
+                return Expr::Assignment {
+                    name,
+                    value: Box::new(remaining),
+                };
+            }
+            let error = ErrorKind::WithLocation {
+                message: String::from("Cant assign to something that is not a variable"),
+                line: line_no as u32,
+                col: None,
+            };
+            report(lox, error);
+        }
+        variable
+    }
+
+    //expression
     fn equality(&mut self, lox: &mut Lox) -> Expr {
         let mut expr = self.comparison(lox);
         while (self.match_types(vec![TokenType::BangEqual, TokenType::EqualEqual])) {
@@ -142,6 +212,12 @@ impl Parser {
             };
         }
 
+        if self.match_types(vec![TokenType::Identifier]) {
+            return Expr::Variable {
+                name: self.previous_token().cloned().unwrap(),
+            };
+        }
+
         if self.match_types(vec![TokenType::LeftParen]) {
             let expr = self.expression(lox);
             self.consume(lox, TokenType::RightParen, "Expect ')' after expression.");
@@ -164,6 +240,31 @@ impl Parser {
     }
 
     //helpers
+
+    fn synchronize(&mut self) {
+        while !(self.is_at_end()) {
+            if (self
+                .previous_token()
+                .is_some_and(|t| t.token_type == TokenType::Semicolon))
+            {
+                return;
+            }
+            match self.peek().map(|t| &t.token_type) {
+                Some(TokenType::Class)
+                | Some(TokenType::Fun)
+                | Some(TokenType::Var)
+                | Some(TokenType::For)
+                | Some(TokenType::If)
+                | Some(TokenType::While)
+                | Some(TokenType::Print)
+                | Some(TokenType::Return) => return,
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+    }
+
     fn consume(&mut self, lox: &mut Lox, token_type: TokenType, message: &str) -> Option<&Token> {
         if self.check(&token_type) {
             return self.advance();

@@ -1,52 +1,115 @@
 #![allow(unused)]
 
 use crate::ast::{Expr, Statement};
+use crate::environment::{self, Environment};
 use crate::error::{ErrorKind, Lox, report};
 use crate::token::{self, Token, TokenType};
 use crate::value::{self, *};
 
-// pub fn interpret(expr: &Expr, lox: &mut Lox) -> Option<Value> {
-//     evaluate(expr, lox)
-// }
+pub fn interpret(statements: &Vec<Statement>, lox: &mut Lox, environment: &mut Environment) {
+    for stmt in statements {
+        execute(stmt, lox, environment);
+    }
+}
 
-pub fn execute(stmt: &Statement, lox: &mut Lox) {
+pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) {
     match stmt {
         Statement::PrintStatement(expr) => {
             // println!("{:?}", expr);
-            if let Some(value) = evaluate(expr, lox) {
+            if let Some(value) = evaluate(expr, lox, env) {
                 println!("{value}");
             }
         }
         Statement::ExprStatement(expr) => {
-            evaluate(expr, lox);
+            evaluate(expr, lox, env);
+        }
+        Statement::AssignStatement { token, expression } => {
+            var_declaration(token, expression, lox, env);
+        }
+        Statement::BlockStatement(statements) => {
+            env.start_scope();
+            for statement in statements {
+                execute(statement, lox, env);
+                if lox.had_error {
+                    break;
+                }
+            }
+            env.end_scope();
         }
     }
 }
 
-pub fn interpret(statements: &Vec<Statement>, lox: &mut Lox) {
-    for stmt in statements {
-        execute(stmt, lox);
+fn var_declaration(
+    token: &Option<Token>,
+    expression: &Option<Expr>,
+    lox: &mut Lox,
+    env: &mut Environment,
+) {
+    let value = match expression {
+        Some(expr) => evaluate(expr, lox, env).unwrap_or(Value::Nil),
+        None => Value::Nil,
+    };
+    if let Some(tok) = token {
+        env.define(&tok.lexeme, value);
     }
 }
 
-fn evaluate(expression: &Expr, lox: &mut Lox) -> Option<Value> {
+fn evaluate(expression: &Expr, lox: &mut Lox, env: &mut Environment) -> Option<Value> {
     match expression {
         Expr::Literal { value: literal } => Some(Value::from(literal.clone()?)),
-        Expr::Grouping { expression: expr } => evaluate(expr, lox),
+        Expr::Grouping { expression: expr } => evaluate(expr, lox, env),
         Expr::Unary {
             operator: op,
             expression: expr,
-        } => evaluate_unary(expr, op, lox),
+        } => evaluate_unary(expr, op, lox, env),
         Expr::Binary {
             left,
             operator: op,
             right,
-        } => evaluate_binary(left, right, op, lox),
+        } => evaluate_binary(left, right, op, lox, env),
+        Expr::Variable { name } => evaluate_identifier(name, lox, env),
+        Expr::Assignment { name, value } => {
+            let val = evaluate(value, lox, env)?;
+            match env.assign(&name.lexeme, val.clone()) {
+                Ok(()) => Some(val),
+                Err(str) => {
+                    let error = ErrorKind::WithLocation {
+                        message: str,
+                        line: name.line as u32,
+                        col: None,
+                    };
+                    report(lox, error);
+                    None
+                }
+            }
+        }
     }
 }
 
-fn evaluate_unary(expression: &Expr, operator: &Token, lox: &mut Lox) -> Option<Value> {
-    let right = evaluate(expression, lox)?;
+fn evaluate_identifier(identifier: &Token, lox: &mut Lox, env: &Environment) -> Option<Value> {
+    match env.lookup(&identifier.lexeme) {
+        Some(val) => Some(val.clone()),
+        None => {
+            report(
+                lox,
+                ErrorKind::WithLocation {
+                    message: format!("Undefined variable '{}'", identifier.lexeme),
+                    line: identifier.line as u32,
+                    col: None,
+                },
+            );
+            None
+        }
+    }
+}
+
+fn evaluate_unary(
+    expression: &Expr,
+    operator: &Token,
+    lox: &mut Lox,
+    env: &mut Environment,
+) -> Option<Value> {
+    let right = evaluate(expression, lox, env)?;
     match operator.token_type {
         TokenType::Minus => match right {
             Value::Num(num) => Some(Value::Num(-num)),
@@ -68,9 +131,15 @@ fn evaluate_unary(expression: &Expr, operator: &Token, lox: &mut Lox) -> Option<
     }
 }
 
-fn evaluate_binary(left: &Expr, right: &Expr, operator: &Token, lox: &mut Lox) -> Option<Value> {
-    let left = evaluate(left, lox)?;
-    let right = evaluate(right, lox)?;
+fn evaluate_binary(
+    left: &Expr,
+    right: &Expr,
+    operator: &Token,
+    lox: &mut Lox,
+    env: &mut Environment,
+) -> Option<Value> {
+    let left = evaluate(left, lox, env)?;
+    let right = evaluate(right, lox, env)?;
 
     match operator.token_type {
         TokenType::Minus => match (left, right) {

@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use crate::ast::{Statement, pretty_print};
+use crate::environment::{self, Environment};
 use crate::error::{ErrorKind, Lox, report};
 use crate::interpreter::interpret;
 use crate::parser::Parser;
@@ -54,5 +55,6 @@ fn run(lox: &mut Lox, source: &str) {
         return;
     }
 
-    interpret(&stmts, lox);
+    let mut environment = Environment::init();
+    interpret(&stmts, lox, &mut environment);
 }

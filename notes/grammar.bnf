@@ -1,16 +1,20 @@
 program → (declaration)* EOF ;
 
-declaration → varDecl | statement;
+declaration → varDecl | statement ;
 
 varDecl → "var" IDENTIFIER ("=" expression)? ";" ;
 
-statement → exprstatement | printstatement ;
+statement → block | exprstatement | printstatement ;
+
+block → "{" declaration "}";
 
 exprstatement → expression ";" ;
 
 printstatement → "print" expression ";" ;
 
-expression     → equality ;
+expression → assignment ;
+
+assignment → IDENTIFIER "=" assignment | equality ;
 
 equality       → equality ("==" | "!=") comparison | comparison ;
 
