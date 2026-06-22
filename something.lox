@@ -1,5 +1,5 @@
-var b = 4;
-var s = b = 78;
-s = 4;
-
-print 3 and 1 ;
+var a = 1;
+while (a < 10) {
+  a = a + 1;
+  print a;
+}

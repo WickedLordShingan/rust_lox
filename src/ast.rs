@@ -49,6 +49,12 @@ pub enum Statement {
         condition: Expr,
         statement: Box<Statement>,
     },
+    // ForStatement {
+    //     initializer: Box<Option<Statement>>,
+    //     condition: Option<Expr>,
+    //     change: Option<Expr>,
+    //     statement: Box<Statement>,
+    // },
 }
 
 pub fn pretty_print(expr: &Expr) -> String {

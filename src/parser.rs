@@ -72,14 +72,75 @@ impl Parser {
         if self.match_types(vec![TokenType::While]) {
             return self.while_statement(lox);
         }
+        if self.match_types(vec![TokenType::For]) {
+            return self.for_statement(lox);
+        }
         self.expression_statement(lox)
+    }
+
+    fn for_statement(&mut self, lox: &mut Lox) -> Statement {
+        self.consume(
+            lox,
+            TokenType::LeftParen,
+            "Open paren was not found after the for keyword",
+        );
+
+        let mut initializer: Option<Statement>;
+        if self.match_types(vec![TokenType::Semicolon]) {
+            initializer = None;
+        } else if self.match_types(vec![TokenType::Var]) {
+            initializer = Some(self.var_declaration(lox));
+        } else {
+            initializer = Some(self.expression_statement(lox));
+        }
+
+        let mut condition: Option<Expr> = None;
+        if (!self.check(&TokenType::Semicolon)) {
+            condition = Some(self.expression(lox));
+        }
+        self.consume(
+            lox,
+            TokenType::Semicolon,
+            "Expected semicolon after initializer in for loop",
+        );
+
+        let mut change: Option<Expr> = None;
+        if (!self.check(&TokenType::RightParen)) {
+            change = Some(self.expression(lox));
+        }
+        self.consume(
+            lox,
+            TokenType::RightParen,
+            "Expected closing paren after condition in for loop",
+        );
+
+        let body = self.statement(lox);
+
+        let mut statements = Vec::new();
+        if let Some(stmt) = initializer {
+            statements.push(stmt);
+        }
+
+        let mut body_and_change = vec![body];
+        if let Some(change) = change {
+            body_and_change.push(Statement::ExprStatement(change));
+        }
+
+        statements.push(Statement::WhileStatement {
+            condition: condition.unwrap_or(Expr::Literal {
+                value: Some(Literal::Bool(true)),
+            }),
+            statement: Box::new(Statement::BlockStatement(body_and_change)),
+        });
+
+        Statement::BlockStatement(statements)
     }
 
     fn while_statement(&mut self, lox: &mut Lox) -> Statement {
         self.consume(
             lox,
             TokenType::LeftParen,
-            "Open paren was not found after a while statement",
+            "Open paren was not found after the for keyword",
         );
         let condition = self.expression(lox);
         self.consume(lox, TokenType::RightParen, "Closing paren was not found");
@@ -94,7 +155,7 @@ impl Parser {
         self.consume(
             lox,
             TokenType::LeftParen,
-            "Open paren was not found after an if statement",
+            "Open paren was not found after the if keyword",
         );
         let condition = self.expression(lox);
         self.consume(lox, TokenType::RightParen, "Closing paren was not found");

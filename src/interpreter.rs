@@ -53,21 +53,21 @@ pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) {
             condition,
             statement,
         } => {
-            // if let Some(mut evaluated_condition) = evaluate(condition, lox, env) {
-            //     while is_truthy(&evaluated_condition) {
-            //         execute(statement, lox, env);
-            //         match evaluate(condition, lox, env) {
-            //             Some(val) => evaluated_condition = val, // actually update it
-            //             None => break,
-            //         }
-            //     }
-            // }
-            while evaluate(condition, lox, env)
-                .map(|v| is_truthy(&v))
-                .unwrap_or(false)
-            {
-                execute(statement, lox, env);
+            if let Some(mut evaluated_condition) = evaluate(condition, lox, env) {
+                while is_truthy(&evaluated_condition) {
+                    execute(statement, lox, env);
+                    match evaluate(condition, lox, env) {
+                        Some(val) => evaluated_condition = val, // actually update it
+                        None => break,
+                    }
+                }
             }
+            // while evaluate(condition, lox, env)
+            //     .map(|v| is_truthy(&v))
+            //     .unwrap_or(false)
+            // {
+            //     execute(statement, lox, env);
+            // }
         }
     }
 }

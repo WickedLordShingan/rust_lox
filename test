@@ -1,5 +1,4 @@
-AssignStatement { token: Some(Token { token_type: Identifier, lexeme: "b", literal: Some(Nil), line: 1 }), expression: Some(Literal { value: Some(Num(4.0)) }) }
-AssignStatement { token: Some(Token { token_type: Identifier, lexeme: "s", literal: Some(Nil), line: 2 }), expression: Some(Assignment { name: Token { token_type: Identifier, lexeme: "b", literal: Some(Nil), line: 2 }, value: Literal { value: Some(Num(78.0)) } }) }
-IfStatement { condition: Binary { left: Variable { name: Token { token_type: Identifier, lexeme: "x", literal: Some(Nil), line: 4 } }, operator: Token { token_type: Greater, lexeme: ">", literal: Some(Nil), line: 4 }, right: Literal { value: Some(Num(3.0)) } }, ifblock: PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "s", literal: Some(Nil), line: 5 } }), elseblock: Some(PrintStatement(Literal { value: Some(Str("b")) })) }
-PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "b", literal: Some(Nil), line: 8 } })
-Integer : 78
+AssignStatement { token: Some(Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 1 }), expression: Some(Literal { value: Some(Num(1.0)) }) }
+WhileStatement { condition: Binary { left: Variable { name: Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 2 } }, operator: Token { token_type: Less, lexeme: "<", literal: Some(Nil), line: 2 }, right: Literal { value: Some(Num(10.0)) } }, 
+statement: BlockStatement(
+[ExprStatement(Assignment { name: Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 3 }, value: Binary { left: Variable { name: Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 3 } }, operator: Token { token_type: Plus, lexeme: "+", literal: Some(Nil), line: 3 }, right: Literal { value: Some(Num(1.0)) } } }), PrintStatement(Variable { name: Token { token_type: Identifier, lexeme: "a", literal: Some(Nil), line: 4 } })]) }

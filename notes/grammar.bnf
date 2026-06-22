@@ -6,7 +6,7 @@ varDecl → "var" IDENTIFIER ("=" expression)? ";" ;
 
 statement → forstatement | whilestatement | ifstatement | block | exprstatement | printstatement ;
 
-forstatement → "for" "(" varDecl | exprstatement | ";" expression? ";" expression? ")" statement ;
+forstatement → "for" "(" ( varDecl | exprstatement | ";" ) expression? ";" expression? ")" statement ;
 
 whilestatement → "while" "(" expression ")" statement ;
 
