@@ -36,6 +36,39 @@ pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) {
             }
             env.end_scope();
         }
+        Statement::IfStatement {
+            condition,
+            ifblock,
+            elseblock,
+        } => {
+            if let Some(condition_result) = evaluate(condition, lox, env) {
+                if is_truthy(&condition_result) {
+                    execute(ifblock, lox, env);
+                } else if let Some(else_block) = elseblock {
+                    execute(else_block, lox, env);
+                }
+            }
+        }
+        Statement::WhileStatement {
+            condition,
+            statement,
+        } => {
+            // if let Some(mut evaluated_condition) = evaluate(condition, lox, env) {
+            //     while is_truthy(&evaluated_condition) {
+            //         execute(statement, lox, env);
+            //         match evaluate(condition, lox, env) {
+            //             Some(val) => evaluated_condition = val, // actually update it
+            //             None => break,
+            //         }
+            //     }
+            // }
+            while evaluate(condition, lox, env)
+                .map(|v| is_truthy(&v))
+                .unwrap_or(false)
+            {
+                execute(statement, lox, env);
+            }
+        }
     }
 }
 
@@ -83,6 +116,39 @@ fn evaluate(expression: &Expr, lox: &mut Lox, env: &mut Environment) -> Option<V
                 }
             }
         }
+        Expr::Logical {
+            left,
+            operator,
+            right,
+        } => evaluate_logical(left, right, operator, lox, env),
+    }
+}
+
+fn evaluate_logical(
+    left: &Expr,
+    right: &Expr,
+    operator: &Token,
+    lox: &mut Lox,
+    env: &mut Environment,
+) -> Option<Value> {
+    match operator.token_type {
+        TokenType::Or => {
+            let left = evaluate(left, lox, env)?;
+            if (is_truthy(&left)) {
+                return Some(left);
+            }
+            let right = evaluate(right, lox, env)?;
+            Some(right)
+        }
+        TokenType::And => {
+            let left = evaluate(left, lox, env)?;
+            if (!is_truthy(&left)) {
+                return Some(left);
+            }
+            let right = evaluate(right, lox, env)?;
+            Some(right)
+        }
+        _ => None,
     }
 }
 

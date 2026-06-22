@@ -66,7 +66,48 @@ impl Parser {
         if self.match_types(vec![TokenType::LeftBrace]) {
             return Statement::BlockStatement(self.block_statement(lox));
         }
+        if self.match_types(vec![TokenType::If]) {
+            return self.if_statement(lox);
+        }
+        if self.match_types(vec![TokenType::While]) {
+            return self.while_statement(lox);
+        }
         self.expression_statement(lox)
+    }
+
+    fn while_statement(&mut self, lox: &mut Lox) -> Statement {
+        self.consume(
+            lox,
+            TokenType::LeftParen,
+            "Open paren was not found after a while statement",
+        );
+        let condition = self.expression(lox);
+        self.consume(lox, TokenType::RightParen, "Closing paren was not found");
+        let statement = Box::new(self.statement(lox));
+        Statement::WhileStatement {
+            condition,
+            statement,
+        }
+    }
+
+    fn if_statement(&mut self, lox: &mut Lox) -> Statement {
+        self.consume(
+            lox,
+            TokenType::LeftParen,
+            "Open paren was not found after an if statement",
+        );
+        let condition = self.expression(lox);
+        self.consume(lox, TokenType::RightParen, "Closing paren was not found");
+        let ifblock = Box::new(self.statement(lox));
+        let mut elseblock: Option<Box<Statement>> = None;
+        if (self.match_types(vec![TokenType::Else])) {
+            elseblock = Some(Box::new(self.statement(lox)));
+        }
+        Statement::IfStatement {
+            condition,
+            ifblock,
+            elseblock,
+        }
     }
 
     fn block_statement(&mut self, lox: &mut Lox) -> Vec<Statement> {
@@ -92,12 +133,13 @@ impl Parser {
         Statement::ExprStatement(expr)
     }
 
+    //expression
     pub fn expression(&mut self, lox: &mut Lox) -> Expr {
         self.assignment(lox)
     }
 
     fn assignment(&mut self, lox: &mut Lox) -> Expr {
-        let variable = self.equality(lox);
+        let variable = self.logical_or(lox);
         if (self.match_types(vec![TokenType::Equal])) {
             let line_no = self.previous_token().unwrap().line;
             let remaining = self.assignment(lox);
@@ -117,7 +159,34 @@ impl Parser {
         variable
     }
 
-    //expression
+    fn logical_or(&mut self, lox: &mut Lox) -> Expr {
+        let mut expr = self.logical_and(lox);
+        while (self.match_types(vec![TokenType::Or])) {
+            let operation = self.previous_token().unwrap().clone();
+            let inner = self.logical_and(lox);
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator: operation,
+                right: Box::new(inner),
+            };
+        }
+        expr
+    }
+
+    fn logical_and(&mut self, lox: &mut Lox) -> Expr {
+        let mut expr = self.equality(lox);
+        while (self.match_types(vec![TokenType::And])) {
+            let operation = self.previous_token().unwrap().clone();
+            let inner = self.equality(lox);
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator: operation,
+                right: Box::new(inner),
+            };
+        }
+        expr
+    }
+
     fn equality(&mut self, lox: &mut Lox) -> Expr {
         let mut expr = self.comparison(lox);
         while (self.match_types(vec![TokenType::BangEqual, TokenType::EqualEqual])) {
@@ -187,9 +256,9 @@ impl Parser {
                 operator: operation,
                 expression: Box::new(inner),
             };
-            return inner;
+            inner
         } else {
-            return self.primary(lox);
+            self.primary(lox)
         }
     }
 

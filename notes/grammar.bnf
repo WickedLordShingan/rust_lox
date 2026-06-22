@@ -4,9 +4,15 @@ declaration → varDecl | statement ;
 
 varDecl → "var" IDENTIFIER ("=" expression)? ";" ;
 
-statement → block | exprstatement | printstatement ;
+statement → forstatement | whilestatement | ifstatement | block | exprstatement | printstatement ;
 
-block → "{" declaration "}";
+forstatement → "for" "(" varDecl | exprstatement | ";" expression? ";" expression? ")" statement ;
+
+whilestatement → "while" "(" expression ")" statement ;
+
+ifstatement → "if" "(" expression ")" statement ("else" statement)? ;
+
+block → "{" declaration "}" ;
 
 exprstatement → expression ";" ;
 
@@ -14,9 +20,11 @@ printstatement → "print" expression ";" ;
 
 expression → assignment ;
 
-assignment → IDENTIFIER "=" assignment | equality ;
+assignment → IDENTIFIER "=" assignment | logical_or ;
 
-equality       → equality ("==" | "!=") comparison | comparison ;
+logical_or → logical_and ( "or" logical_and )* ;
+
+logical_and → equality ( "and" equality )* ;
 
 equality → comparison (("==" | "!=") comparison)* ;
 

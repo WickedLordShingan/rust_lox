@@ -1,6 +1,5 @@
 var b = 4;
-var s = b = a = 1;
+var s = b = 78;
+s = 4;
 
-print s;
-print b;
-print a;
+print 3 and 1 ;

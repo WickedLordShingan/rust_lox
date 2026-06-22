@@ -2,6 +2,11 @@ use crate::token::{Literal, Token};
 
 #[derive(Debug)]
 pub enum Expr {
+    Logical {
+        left: Box<Expr>,
+        operator: Token,
+        right: Box<Expr>,
+    },
     Assignment {
         name: Token,
         value: Box<Expr>,
@@ -35,6 +40,15 @@ pub enum Statement {
         expression: Option<Expr>,
     },
     BlockStatement(Vec<Statement>),
+    IfStatement {
+        condition: Expr,
+        ifblock: Box<Statement>,
+        elseblock: Option<Box<Statement>>,
+    },
+    WhileStatement {
+        condition: Expr,
+        statement: Box<Statement>,
+    },
 }
 
 pub fn pretty_print(expr: &Expr) -> String {

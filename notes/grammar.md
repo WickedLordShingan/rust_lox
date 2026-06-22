@@ -24,6 +24,7 @@ operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
  - why is factor like that ? ? division is left associative meaning a/b/c is a/bc and not ac/b
  - so one of lower precedence on the left na left associativity else right associativity
  - All of this is correct, but the fact that the first symbol in the body of the rule is the same as the head of the rule means this production is left-recursive.
+
 # PRECEDENCE
 expression     → ...
 equality       → ...
@@ -52,3 +53,4 @@ term → factor (("-" | "+") factor)*
 factor → unary (("*" | "/") unary)*
 `
  - LL(k), LR(1), LALR—along with more exotic beasts like parser combinators, Earley parsers, the shunting yard algorithm, and packrat parsing.
+
