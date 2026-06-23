@@ -1,7 +1,12 @@
 use crate::token::{Literal, Token};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
+    Call {
+        callee: Box<Expr>,
+        arguments: Vec<Expr>,
+        paren: Token,
+    },
     Logical {
         left: Box<Expr>,
         operator: Token,
@@ -31,7 +36,7 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     ExprStatement(Expr),
     PrintStatement(Expr),
@@ -49,12 +54,11 @@ pub enum Statement {
         condition: Expr,
         statement: Box<Statement>,
     },
-    // ForStatement {
-    //     initializer: Box<Option<Statement>>,
-    //     condition: Option<Expr>,
-    //     change: Option<Expr>,
-    //     statement: Box<Statement>,
-    // },
+    FunctionDeclaration {
+        name: Token,
+        parameters: Vec<Token>,
+        body: Vec<Statement>,
+    },
 }
 
 pub fn pretty_print(expr: &Expr) -> String {

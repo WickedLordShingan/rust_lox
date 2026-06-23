@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use std::fmt::Arguments;
 use std::vec;
 
 use crate::ast::{Expr, Statement};
@@ -75,7 +76,53 @@ impl Parser {
         if self.match_types(vec![TokenType::For]) {
             return self.for_statement(lox);
         }
+        if self.match_types(vec![TokenType::Fun]) {
+            return self.fun_statement(lox);
+        }
         self.expression_statement(lox)
+    }
+
+    fn fun_statement(&mut self, lox: &mut Lox) -> Statement {
+        let name = self
+            .consume(lox, TokenType::Identifier, "Expected a function name")
+            .cloned()
+            .unwrap();
+        self.consume(
+            lox,
+            TokenType::LeftParen,
+            "Expected left paren after the name of a function",
+        );
+        let mut params = Vec::new();
+        if (!self.check(&TokenType::RightParen)) {
+            if let Some(token) = self.consume(
+                lox,
+                TokenType::Identifier,
+                "Where is the fucking Identifier ? huh ... jackass",
+            ) {
+                params.push(token.clone());
+            }
+            while self.match_types(vec![TokenType::Comma]) {
+                if let Some(token) = self.consume(
+                    lox,
+                    TokenType::Identifier,
+                    "Where is the fucking Identifier ? huh ... jackass",
+                ) {
+                    params.push(token.clone());
+                }
+            }
+        }
+        self.consume(
+            lox,
+            TokenType::RightParen,
+            "Expected right paren after all the function parameters",
+        );
+
+        let body = self.block_statement(lox);
+        Statement::FunctionDeclaration {
+            name,
+            parameters: params,
+            body,
+        }
     }
 
     fn for_statement(&mut self, lox: &mut Lox) -> Statement {
@@ -319,7 +366,48 @@ impl Parser {
             };
             inner
         } else {
-            self.primary(lox)
+            self.call(lox)
+        }
+    }
+
+    fn call(&mut self, lox: &mut Lox) -> Expr {
+        let mut expr = self.primary(lox);
+        loop {
+            if self.match_types(vec![TokenType::LeftParen]) {
+                expr = self.complete_call(lox, expr);
+            } else {
+                break;
+            }
+        }
+        expr
+    }
+
+    fn complete_call(&mut self, lox: &mut Lox, callee: Expr) -> Expr {
+        let mut arguments = Vec::new();
+        if (!self.check(&TokenType::RightParen)) {
+            let first_argument = self.expression(lox);
+            arguments.push(first_argument);
+            while (self.match_types(vec![TokenType::Comma])) {
+                if arguments.len() > 255 {
+                    eprintln!(
+                        "A function cant have more than 255 arguments, more importantly you should seek help if you called a function with 255 arguments BY HAND"
+                    );
+                    break;
+                }
+                arguments.push(self.expression(lox))
+            }
+        }
+        let paren_token = self
+            .consume(
+                lox,
+                TokenType::RightParen,
+                "Right paren is expected at the end of a function call",
+            )
+            .unwrap();
+        Expr::Call {
+            callee: Box::new(callee),
+            arguments,
+            paren: paren_token.clone(),
         }
     }
 

@@ -45,7 +45,7 @@ fn run(lox: &mut Lox, source: &str) {
         return;
     }
 
-    // println!("{:?}", scanner.tokens);
+    println!("{:?}", scanner.tokens);
     let mut parser = Parser::init(scanner.tokens);
 
     let stmts = parser.parse(lox);

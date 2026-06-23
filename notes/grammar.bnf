@@ -4,7 +4,13 @@ declaration → varDecl | statement ;
 
 varDecl → "var" IDENTIFIER ("=" expression)? ";" ;
 
-statement → forstatement | whilestatement | ifstatement | block | exprstatement | printstatement ;
+statement → functionstatement | returnstatement | forstatement | whilestatement | ifstatement | block | exprstatement | printstatement ;
+
+functionstatement → "fun" IDENTIFIER "(" parameters? ")" block ;
+
+parameters → IDENTIFIER ( "," IDENTIFIER )* ;
+
+returnstatement → "return" expression? ";" ;
 
 forstatement → "for" "(" ( varDecl | exprstatement | ";" ) expression? ";" expression? ")" statement ;
 
@@ -38,6 +44,6 @@ unary → ("!" | "-") unary | call ;
 
 call → primary ( "(" arguments? ")" )* ;
 
-arguments → expression ( "," expression )* ;
+arguments → expression ( "," expression)* ;
 
 primary → "true" | "false" | "nil" | NUMBER | STRING | "(" expression ")" | IDENTIFIER ;

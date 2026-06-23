@@ -69,6 +69,20 @@ pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) {
             //     execute(statement, lox, env);
             // }
         }
+        Statement::FunctionDeclaration {
+            name,
+            parameters,
+            body,
+        } => {
+            env.define(
+                &name.lexeme,
+                Value::Function {
+                    name: name.lexeme.clone(),
+                    params: parameters.clone(),
+                    body: body.clone(),
+                },
+            );
+        }
     }
 }
 
@@ -121,6 +135,11 @@ fn evaluate(expression: &Expr, lox: &mut Lox, env: &mut Environment) -> Option<V
             operator,
             right,
         } => evaluate_logical(left, right, operator, lox, env),
+        Expr::Call {
+            callee,
+            arguments,
+            paren,
+        } => todo!(),
     }
 }
 
@@ -384,5 +403,6 @@ fn is_truthy(value: &Value) -> bool {
         Value::Num(num) => *num != f64::from(0),
         Value::Bool(bool) => *bool,
         Value::Nil => false,
+        Value::Function { name, params, body } => todo!(),
     }
 }

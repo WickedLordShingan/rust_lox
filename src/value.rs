@@ -1,6 +1,9 @@
 use std::fmt::{self, Display};
 
-use crate::token::Literal;
+use crate::{
+    ast::Statement,
+    token::{Literal, Token},
+};
 
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -8,6 +11,11 @@ pub enum Value {
     Num(f64),
     Bool(bool),
     Nil,
+    Function {
+        name: String,
+        params: Vec<Token>,
+        body: Vec<Statement>,
+    },
 }
 
 impl From<Literal> for Value {
@@ -32,6 +40,7 @@ impl Display for Value {
                 write!(f, "Float : {num}")
             }
             Self::Bool(bool) => write!(f, "Boolean : {bool}"),
+            Self::Function { name, params, body } => todo!(),
             Self::Nil => write!(f, "nandemonai desuga"),
         }
     }
