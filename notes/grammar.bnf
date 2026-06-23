@@ -12,7 +12,7 @@ whilestatement → "while" "(" expression ")" statement ;
 
 ifstatement → "if" "(" expression ")" statement ("else" statement)? ;
 
-block → "{" declaration "}" ;
+block → "{" declaration* "}" ;
 
 exprstatement → expression ";" ;
 
@@ -34,4 +34,10 @@ term → factor (("-" | "+") factor)* ;
 
 factor → unary (("*" | "/") unary)* ;
 
-primary        → "true" | "false" | "nil" | NUMBER | STRING | "(" expression ")" | IDENTIFIER ;
+unary → ("!" | "-") unary | call ;
+
+call → primary ( "(" arguments? ")" )* ;
+
+arguments → expression ( "," expression )* ;
+
+primary → "true" | "false" | "nil" | NUMBER | STRING | "(" expression ")" | IDENTIFIER ;

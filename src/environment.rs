@@ -25,15 +25,22 @@ impl Environment {
             self.values.insert(name.to_string(), val);
             return Ok(());
         }
+        if let Some(parent) = &mut self.parent {
+            return parent.assign(name, val);
+        }
         Err(format!("Undefined variable name {name}"))
     }
 
     pub fn lookup(&self, name: &str) -> Option<&Value> {
-        self.values.get(name)
+        if let Some(val) = self.values.get(name) {
+            return Some(val);
+        }
+        self.parent.as_ref()?.lookup(name)
     }
 
     pub fn start_scope(&mut self) {
         self.parent = Some(Box::new(self.clone()));
+        self.values = HashMap::new();
     }
 
     pub fn end_scope(&mut self) {
