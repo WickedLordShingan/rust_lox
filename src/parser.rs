@@ -79,7 +79,27 @@ impl Parser {
         if self.match_types(vec![TokenType::Fun]) {
             return self.fun_statement(lox);
         }
+        if self.match_types(vec![TokenType::Return]) {
+            return self.return_statement(lox);
+        }
         self.expression_statement(lox)
+    }
+
+    fn return_statement(&mut self, lox: &mut Lox) -> Statement {
+        let return_token = self.previous_token().unwrap().clone();
+        let mut expr = None;
+        if (!self.check(&TokenType::Semicolon)) {
+            expr = Some(self.expression(lox));
+        }
+        self.consume(
+            lox,
+            TokenType::Semicolon,
+            "Expected semicolon at the end of a return statement",
+        );
+        Statement::ReturnStatement {
+            token: return_token,
+            expr,
+        }
     }
 
     fn fun_statement(&mut self, lox: &mut Lox) -> Statement {
@@ -115,6 +135,12 @@ impl Parser {
             lox,
             TokenType::RightParen,
             "Expected right paren after all the function parameters",
+        );
+
+        self.consume(
+            lox,
+            TokenType::LeftBrace,
+            "Expected left curly brace after all the function parameters",
         );
 
         let body = self.block_statement(lox);

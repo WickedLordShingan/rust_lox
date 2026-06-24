@@ -1,10 +1,8 @@
-// fibonacci
-var a = 0;
-var b = 1;
+fun add(a, b) {
+  if (a == 0) {
+    return b;
+  }
+  return 1 + add(a - 1, b);
+}
 
-if (a == 0) {
-    print "a" ;
-  }
-else {
-    print "b";
-  }
+print add(2, 2);

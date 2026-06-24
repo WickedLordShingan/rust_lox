@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use std::fmt::Arguments;
+
 use crate::ast::{Expr, Statement};
 use crate::environment::{self, Environment};
 use crate::error::{ErrorKind, Lox, report};
@@ -9,33 +11,44 @@ use crate::value::{self, *};
 pub fn interpret(statements: &Vec<Statement>, lox: &mut Lox, environment: &mut Environment) {
     for stmt in statements {
         execute(stmt, lox, environment);
+        //need to stop if error
     }
 }
 
-pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) {
+pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) -> Option<Value> {
     match stmt {
         Statement::PrintStatement(expr) => {
             // println!("{:?}", expr);
             if let Some(value) = evaluate(expr, lox, env) {
                 println!("{value}");
             }
+            None
         }
+
         Statement::ExprStatement(expr) => {
             evaluate(expr, lox, env);
+            None
         }
+
         Statement::AssignStatement { token, expression } => {
             var_declaration(token, expression, lox, env);
+            None
         }
+
         Statement::BlockStatement(statements) => {
             env.start_scope();
             for statement in statements {
-                execute(statement, lox, env);
+                if let Some(return_val) = execute(statement, lox, env) {
+                    return Some(return_val);
+                }
                 if lox.had_error {
                     break;
                 }
             }
             env.end_scope();
+            None
         }
+
         Statement::IfStatement {
             condition,
             ifblock,
@@ -43,25 +56,30 @@ pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) {
         } => {
             if let Some(condition_result) = evaluate(condition, lox, env) {
                 if is_truthy(&condition_result) {
-                    execute(ifblock, lox, env);
+                    return execute(ifblock, lox, env);
                 } else if let Some(else_block) = elseblock {
-                    execute(else_block, lox, env);
+                    return execute(else_block, lox, env);
                 }
             }
+            None
         }
+
         Statement::WhileStatement {
             condition,
             statement,
         } => {
             if let Some(mut evaluated_condition) = evaluate(condition, lox, env) {
                 while is_truthy(&evaluated_condition) {
-                    execute(statement, lox, env);
+                    if let Some(return_val) = execute(statement, lox, env) {
+                        return Some(return_val);
+                    }
                     match evaluate(condition, lox, env) {
-                        Some(val) => evaluated_condition = val, // actually update it
+                        Some(val) => evaluated_condition = val, // update it
                         None => break,
                     }
                 }
             }
+            None
             // while evaluate(condition, lox, env)
             //     .map(|v| is_truthy(&v))
             //     .unwrap_or(false)
@@ -69,6 +87,7 @@ pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) {
             //     execute(statement, lox, env);
             // }
         }
+
         Statement::FunctionDeclaration {
             name,
             parameters,
@@ -82,6 +101,15 @@ pub fn execute(stmt: &Statement, lox: &mut Lox, env: &mut Environment) {
                     body: body.clone(),
                 },
             );
+            None
+        }
+
+        Statement::ReturnStatement { token, expr } => {
+            let val = match expr {
+                Some(expression) => evaluate(expression, lox, env).unwrap_or(Value::Nil),
+                None => Value::Nil,
+            };
+            Some(val)
         }
     }
 }
@@ -139,8 +167,81 @@ fn evaluate(expression: &Expr, lox: &mut Lox, env: &mut Environment) -> Option<V
             callee,
             arguments,
             paren,
-        } => todo!(),
+        } => evaluate_call(callee, arguments, paren, lox, env),
     }
+}
+
+fn evaluate_call(
+    callee: &Expr,
+    arguments: &[Expr],
+    paren: &Token,
+    lox: &mut Lox,
+    env: &mut Environment,
+) -> Option<Value> {
+    let callee = evaluate(callee, lox, env)?;
+    if let Value::Function { name, params, body } = callee {
+        return call_function(paren, &name, &params, &body, arguments, lox, env);
+    }
+    let error = ErrorKind::WithLocation {
+        message: String::from("Cant call random shit bruh need a fucking function"),
+        line: paren.line as u32,
+        col: None,
+    };
+    report(lox, error);
+    None
+}
+
+fn call_function(
+    paren: &Token,
+    name: &str,
+    parameters: &[Token],
+    body: &[Statement],
+    arguments: &[Expr],
+    lox: &mut Lox,
+    env: &mut Environment,
+) -> Option<Value> {
+    if parameters.len() != arguments.len() {
+        let error = ErrorKind::WithLocation {
+            message: format!(
+                "Function {} expected {} arguments but got {} arguments",
+                name,
+                parameters.len(),
+                arguments.len(),
+            ),
+            line: paren.line as u32,
+            col: None,
+        };
+        report(lox, error);
+        return None;
+    }
+
+    let evaluated: Vec<Value> = arguments
+        .iter()
+        .map(|arg| evaluate(arg, lox, env))
+        .collect::<Option<Vec<_>>>()?; // any None short-circuits the whole thing
+
+    env.start_scope();
+
+    for (param, value) in parameters.iter().zip(evaluated) {
+        env.define(&param.lexeme, value);
+    }
+
+    let return_val = {
+        let mut result = None;
+        for stmt in body {
+            if let Some(val) = execute(stmt, lox, env) {
+                result = Some(val);
+                break;
+            }
+            if lox.had_error {
+                break;
+            }
+        }
+        result
+    };
+
+    env.end_scope();
+    return_val.or(Some(Value::Nil))
 }
 
 fn evaluate_logical(

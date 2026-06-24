@@ -59,6 +59,10 @@ pub enum Statement {
         parameters: Vec<Token>,
         body: Vec<Statement>,
     },
+    ReturnStatement {
+        token: Token,
+        expr: Option<Expr>,
+    },
 }
 
 pub fn pretty_print(expr: &Expr) -> String {
