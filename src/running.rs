@@ -3,7 +3,7 @@
 use crate::ast::{Statement, pretty_print};
 use crate::environment::{self, Environment};
 use crate::error::{ErrorKind, Lox, report};
-use crate::interpreter::interpret;
+use crate::interpreter::Interpreter;
 use crate::parser::Parser;
 use crate::scanner::Scanner;
 use std::fs;
@@ -45,20 +45,21 @@ fn run(lox: &mut Lox, source: &str) {
         return;
     }
 
-    for token in &scanner.tokens {
-        println!("{:?}", token);
-    }
+    // for token in &scanner.tokens {
+    //     println!("{:?}", token);
+    // }
+
     let mut parser = Parser::init(scanner.tokens);
 
     let stmts = parser.parse(lox);
     // for stmt in &stmts {
     //     println!("{:?}", stmt);
     // }
-    //
+
     if lox.had_error {
         return;
     }
 
-    let mut environment = Environment::init();
-    interpret(&stmts, lox, &mut environment);
+    let mut interpreter = Interpreter::init();
+    interpreter.interpret(&stmts, lox);
 }

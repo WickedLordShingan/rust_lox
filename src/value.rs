@@ -2,6 +2,7 @@ use std::fmt::{self, Display};
 
 use crate::{
     ast::Statement,
+    environment::Environment,
     token::{Literal, Token},
 };
 
@@ -40,8 +41,8 @@ impl Display for Value {
                 write!(f, "Float : {num}")
             }
             Self::Bool(bool) => write!(f, "Boolean : {bool}"),
-            Self::Function { name, params, body } => todo!(),
             Self::Nil => write!(f, "nandemonai desuga"),
+            _ => todo!(),
         }
     }
 }

@@ -1,4 +1,7 @@
-use crate::token::{Literal, Token};
+use crate::{
+    environment::Environment,
+    token::{Literal, Token},
+};
 
 #[derive(Debug, Clone)]
 pub enum Expr {

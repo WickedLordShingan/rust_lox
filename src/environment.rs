@@ -50,4 +50,8 @@ impl Environment {
             self.parent = environ.parent;
         }
     }
+
+    pub fn replace_with(&mut self, other: Environment) -> Environment {
+        std::mem::replace(self, other)
+    }
 }
