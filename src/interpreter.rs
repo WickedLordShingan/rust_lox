@@ -11,6 +11,7 @@ use crate::value::{self, *};
 pub struct Interpreter {
     globals: Environment,
     current_env: Environment,
+    fn_depth: i32,
 }
 
 impl Interpreter {
@@ -18,11 +19,13 @@ impl Interpreter {
         Self {
             globals: Environment::init(),
             current_env: Environment::init(),
+            fn_depth: 0,
         }
     }
 
     pub fn interpret(&mut self, statements: &Vec<Statement>, lox: &mut Lox) {
         for stmt in statements {
+            let mut func = 0;
             self.execute(stmt, lox);
             //need to stop if error
             if (lox.had_error) {
@@ -122,6 +125,15 @@ impl Interpreter {
             }
 
             Statement::ReturnStatement { token, expr } => {
+                if (self.fn_depth == 0) {
+                    let error = ErrorKind::WithLocation {
+                        message: String::from("Can't call return at top level"),
+                        line: token.line as u32,
+                        col: None,
+                    };
+                    report(lox, error);
+                    return None;
+                }
                 let val = match expr {
                     Some(expression) => self.evaluate(expression, lox).unwrap_or(Value::Nil),
                     None => Value::Nil,
@@ -227,6 +239,7 @@ impl Interpreter {
             return None;
         }
 
+        self.fn_depth += 1;
         let evaluated: Vec<Value> = arguments
             .iter()
             .map(|arg| self.evaluate(arg, lox))
@@ -251,6 +264,8 @@ impl Interpreter {
                     break;
                 }
             }
+
+            self.fn_depth -= 1;
             result
         };
 
