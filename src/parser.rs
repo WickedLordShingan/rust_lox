@@ -1,6 +1,5 @@
 #![allow(unused)]
 
-use std::fmt::Arguments;
 use std::vec;
 
 use crate::ast::{Expr, Statement};
@@ -13,6 +12,7 @@ pub struct Parser {
     current: usize,
 }
 
+// TODO:rewrite it to properly handle parsing errors
 impl Parser {
     pub fn init(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
@@ -29,6 +29,7 @@ impl Parser {
     }
 
     fn declaration(&mut self, lox: &mut Lox) -> Option<Statement> {
+        //TODO: maybe I should include function declaration here itself
         if self.match_types(vec![TokenType::Var]) {
             return Some(self.var_declaration(lox));
         }
@@ -47,6 +48,7 @@ impl Parser {
             .cloned();
         let mut initializer = None;
         if (self.match_types(vec![TokenType::Equal])) {
+            // TODO:here if this returned Some(Expression) it would be really nice
             initializer = Some(self.expression(lox));
         }
         self.consume(
@@ -103,6 +105,7 @@ impl Parser {
     }
 
     fn fun_statement(&mut self, lox: &mut Lox) -> Statement {
+        //TODO:here if consume returns None then that could be a point of return
         let name = self
             .consume(lox, TokenType::Identifier, "Expected a function name")
             .cloned()
@@ -190,8 +193,8 @@ impl Parser {
         let body = self.statement(lox);
 
         let mut statements = Vec::new();
-        if let Some(stmt) = initializer {
-            statements.push(stmt);
+        if let Some(init) = initializer {
+            statements.push(init);
         }
 
         let mut body_and_change = vec![body];
@@ -246,7 +249,8 @@ impl Parser {
 
     fn block_statement(&mut self, lox: &mut Lox) -> Vec<Statement> {
         let mut statements: Vec<Statement> = Vec::new();
-        while !self.check(&TokenType::RightBrace) {
+        //TODO: Add check for bounds
+        while !self.is_at_end() && !self.check(&TokenType::RightBrace) {
             if let Some(statement) = self.declaration(lox) {
                 statements.push(statement);
             }
@@ -479,7 +483,7 @@ impl Parser {
                 col: None,
             },
         );
-
+        //TODO:just return None here this is one more source of error
         Expr::Literal { value: None }
     }
 

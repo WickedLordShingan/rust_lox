@@ -46,5 +46,6 @@ pub fn report(lox: &mut Lox, error: ErrorKind) {
             eprintln!("[lines {start_line}–{end_line}] Error: {message}");
         }
     }
+    //TODO: why is there another had_error = true here?
     lox.had_error = true;
 }

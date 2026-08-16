@@ -44,6 +44,7 @@ impl Scanner {
 
     pub fn scan_tokens(&mut self, lox: &mut Lox) {
         while !(self.is_at_end()) {
+            //TODO:should I break out of the loop if lox.had_error?
             self.start = self.current;
             self.scan_token(lox);
         }
@@ -158,7 +159,7 @@ impl Scanner {
     }
 
     fn identifier(&mut self, lox: &mut Lox) {
-        while (is_alpha(self.peek()) || is_num(self.peek())) {
+        while (is_alpha(self.peek()) || is_num(self.peek()) || self.peek() == '_') {
             self.advance();
         }
         let source = &self.source[self.start..self.current];

@@ -11,6 +11,7 @@ pub enum TokenType {
     Plus,
     Semicolon,
     Slash,
+    // UnderScore,
     Star,
 
     // One or two character
@@ -61,6 +62,7 @@ pub enum Literal {
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
+    //TODO:why is this an option?
     pub literal: Option<Literal>,
     pub line: usize,
 }

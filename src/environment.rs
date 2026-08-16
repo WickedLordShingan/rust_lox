@@ -1,57 +1,56 @@
 #![allow(unused)]
 use crate::value::Value;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-#[derive(Debug, Clone)]
+pub type Env = Rc<RefCell<Environment>>;
+
+#[derive(Debug)]
 pub struct Environment {
-    values: HashMap<String, Value>,
-    parent: Option<Box<Environment>>,
+    pub values: HashMap<String, Value>,
+    pub parent: Option<Env>,
 }
 
 impl Environment {
-    pub fn init() -> Self {
-        Self {
+    pub fn init() -> Env {
+        Rc::new(RefCell::new(Environment {
             values: HashMap::new(),
             parent: None,
-        }
+        }))
+    }
+
+    // create a new child scope hanging off `parent`
+    pub fn child(parent: &Env) -> Env {
+        Rc::new(RefCell::new(Environment {
+            values: HashMap::new(),
+            parent: Some(parent.clone()),
+        }))
     }
 
     pub fn define(&mut self, name: &str, val: Value) {
         self.values.insert(name.to_string(), val);
     }
 
-    pub fn assign(&mut self, name: &str, val: Value) -> Result<(), String> {
-        if self.values.contains_key(name) {
-            self.values.insert(name.to_string(), val);
-            return Ok(());
+    pub fn assign(env: &Env, name: &str, val: Value) -> Option<()> {
+        if env.borrow().values.contains_key(name) {
+            env.borrow_mut()
+                .values
+                .insert(name.to_string(), val.clone());
+            return Some(());
         }
-        if let Some(parent) = &mut self.parent {
-            return parent.assign(name, val);
-        }
-        Err(format!("Undefined variable name {name}"))
-    }
-
-    pub fn lookup(&self, name: &str) -> Option<&Value> {
-        if let Some(val) = self.values.get(name) {
-            return Some(val);
-        }
-        self.parent.as_ref()?.lookup(name)
-    }
-
-    pub fn start_scope(&mut self) {
-        self.parent = Some(Box::new(self.clone()));
-        self.values = HashMap::new();
-    }
-
-    pub fn end_scope(&mut self) {
-        if let Some(parent) = self.parent.take() {
-            let environ = *parent;
-            self.values = environ.values;
-            self.parent = environ.parent;
+        let parent = env.borrow().parent.clone();
+        match parent {
+            Some(p) => Environment::assign(&p, name, val),
+            //then at every call to assign you need to make sure that error handling is done
+            //properly
+            None => None,
         }
     }
 
-    pub fn replace_with(&mut self, other: Environment) -> Environment {
-        std::mem::replace(self, other)
+    pub fn lookup(env: &Env, name: &str) -> Option<Value> {
+        if let Some(val) = env.borrow().values.get(name) {
+            return Some(val.clone());
+        }
+        let parent = env.borrow().parent.clone()?;
+        Environment::lookup(&parent, name)
     }
 }

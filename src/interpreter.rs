@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use std::cell::RefCell;
 use std::fmt::Arguments;
 
 use crate::ast::{Expr, Statement};
@@ -8,16 +9,18 @@ use crate::error::{ErrorKind, Lox, report};
 use crate::token::{self, Token, TokenType};
 use crate::value::{self, *};
 
+use std::rc::Rc;
+
 pub struct Interpreter {
-    globals: Environment,
-    current_env: Environment,
+    // globals: Environment,
+    current_env: Rc<RefCell<Environment>>,
     fn_depth: i32,
 }
 
 impl Interpreter {
     pub fn init() -> Self {
         Self {
-            globals: Environment::init(),
+            // globals: Environment::init(),
             current_env: Environment::init(),
             fn_depth: 0,
         }
@@ -25,6 +28,7 @@ impl Interpreter {
 
     pub fn interpret(&mut self, statements: &Vec<Statement>, lox: &mut Lox) {
         for stmt in statements {
+            //TODO: what the hell is this
             let mut func = 0;
             self.execute(stmt, lox);
             //need to stop if error
@@ -56,8 +60,11 @@ impl Interpreter {
 
             Statement::BlockStatement(statements) => {
                 // let mut returny = None;
-                self.current_env.start_scope();
+                let previous = self.current_env.clone();
+                self.current_env = Environment::child(&previous);
                 for statement in statements {
+                    //only return statements have a non none return value, so whenever
+                    //we encounter a non none return val I return the same
                     if let Some(return_val) = self.execute(statement, lox) {
                         return Some(return_val);
                     }
@@ -65,7 +72,12 @@ impl Interpreter {
                         break;
                     }
                 }
-                self.current_env.end_scope();
+                // let parent = self
+                //     .current_env
+                //     .borrow()
+                //     .parent
+                //     .expect("tried to go above global level");
+                self.current_env = previous;
                 None
             }
 
@@ -113,21 +125,26 @@ impl Interpreter {
                 parameters,
                 body,
             } => {
-                self.current_env.define(
-                    &name.lexeme,
-                    Value::Function {
-                        name: name.lexeme.clone(),
-                        params: parameters.clone(),
-                        body: body.clone(),
-                    },
-                );
-                None
+                let f_val = Value::Function {
+                    name: name.lexeme.clone(),
+                    params: parameters.clone(),
+                    body: Rc::new(body.clone()),
+                    closure: self.current_env.clone(),
+                };
+
+                // print!("{:?}", self.current_env);
+                self.current_env
+                    .borrow_mut()
+                    .define(&name.lexeme, f_val.clone());
+                Some(f_val)
             }
 
             Statement::ReturnStatement { token, expr } => {
                 if (self.fn_depth == 0) {
                     let error = ErrorKind::WithLocation {
-                        message: String::from("Can't call return at top level"),
+                        message: String::from(
+                            "Can't call return when you're not inside of a function",
+                        ),
                         line: token.line as u32,
                         col: None,
                     };
@@ -149,7 +166,7 @@ impl Interpreter {
             None => Value::Nil,
         };
         if let Some(tok) = token {
-            self.current_env.define(&tok.lexeme, value);
+            self.current_env.borrow_mut().define(&tok.lexeme, value);
         }
     }
 
@@ -168,13 +185,22 @@ impl Interpreter {
             } => self.evaluate_binary(left, right, op, lox),
             Expr::Variable { name } => self.evaluate_identifier(name, lox),
             Expr::Assignment { name, value } => {
+                // println!("{:?}", self.current_env);
                 let val = self.evaluate(value, lox)?;
-                match self.current_env.assign(&name.lexeme, val.clone()) {
-                    Ok(()) => Some(val),
-                    Err(str) => {
+                // println!(
+                //     "{:p} keys: {:?}",
+                //     Rc::as_ptr(&self.current_env),
+                //     self.current_env.borrow().values.keys().collect::<Vec<_>>()
+                // );
+                // println!("{:?}", self.current_env);
+                match Environment::assign(&self.current_env, &name.lexeme, val.clone()) {
+                    Some(()) => Some(val),
+                    None => {
+                        // println!("here");
                         let error = ErrorKind::WithLocation {
-                            message: str,
+                            message: String::from("variable does not exist"),
                             line: name.line as u32,
+                            //TODO:why do you even have a col field
                             col: None,
                         };
                         report(lox, error);
@@ -203,8 +229,14 @@ impl Interpreter {
         lox: &mut Lox,
     ) -> Option<Value> {
         let callee = self.evaluate(callee, lox)?;
-        if let Value::Function { name, params, body } = callee {
-            return self.call_function(paren, &name, &params, &body, arguments, lox);
+        if let Value::Function {
+            name,
+            params,
+            body,
+            closure,
+        } = &callee
+        {
+            return self.call_function(paren, name, params, body, arguments, closure, lox);
         }
         let error = ErrorKind::WithLocation {
             message: String::from("Cant call random shit bruh need a fucking function"),
@@ -222,6 +254,7 @@ impl Interpreter {
         parameters: &[Token],
         body: &[Statement],
         arguments: &[Expr],
+        closure: &Rc<RefCell<Environment>>,
         lox: &mut Lox,
     ) -> Option<Value> {
         if parameters.len() != arguments.len() {
@@ -247,10 +280,12 @@ impl Interpreter {
 
         // let global_clone = self.globals.clone();
         // let old_env = self.current_env.replace_with(global_clone);
-        self.current_env.start_scope();
+        let previous = self.current_env.clone();
+        self.current_env = Environment::child(closure);
+        // println!("{:?}", self.current_env);
 
         for (param, value) in parameters.iter().zip(evaluated) {
-            self.current_env.define(&param.lexeme, value);
+            self.current_env.borrow_mut().define(&param.lexeme, value);
         }
 
         let return_val = {
@@ -269,7 +304,7 @@ impl Interpreter {
             result
         };
 
-        self.current_env.end_scope();
+        self.current_env = previous;
         // let _ = self.current_env.replace_with(old_env);
         return_val.or(Some(Value::Nil))
     }
@@ -304,7 +339,7 @@ impl Interpreter {
 
     fn evaluate_identifier(&mut self, identifier: &Token, lox: &mut Lox) -> Option<Value> {
         // println!("looking up: {}", identifier.lexeme);
-        match self.current_env.lookup(&identifier.lexeme) {
+        match Environment::lookup(&self.current_env, &identifier.lexeme) {
             Some(val) => Some(val.clone()),
             None => {
                 report(
@@ -535,6 +570,11 @@ fn is_truthy(value: &Value) -> bool {
         Value::Num(num) => *num != f64::from(0),
         Value::Bool(bool) => *bool,
         Value::Nil => false,
-        Value::Function { name, params, body } => todo!(),
+        Value::Function {
+            name,
+            params,
+            body,
+            closure,
+        } => true,
     }
 }

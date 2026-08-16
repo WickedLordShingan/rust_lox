@@ -1,4 +1,8 @@
-use std::fmt::{self, Display};
+use std::{
+    cell::RefCell,
+    fmt::{self, Display},
+    rc::Rc,
+};
 
 use crate::{
     ast::Statement,
@@ -15,7 +19,8 @@ pub enum Value {
     Function {
         name: String,
         params: Vec<Token>,
-        body: Vec<Statement>,
+        body: Rc<Vec<Statement>>,
+        closure: Rc<RefCell<Environment>>,
     },
 }
 
