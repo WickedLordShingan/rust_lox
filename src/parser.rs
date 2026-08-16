@@ -13,6 +13,7 @@ pub struct Parser {
 }
 
 // TODO:rewrite it to properly handle parsing errors
+// DONE i believe
 impl Parser {
     pub fn init(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
@@ -30,44 +31,46 @@ impl Parser {
 
     fn declaration(&mut self, lox: &mut Lox) -> Option<Statement> {
         //TODO: maybe I should include function declaration here itself
-        if self.match_types(vec![TokenType::Var]) {
-            return Some(self.var_declaration(lox));
-        }
-        let temp = self.statement(lox);
+        let result = if self.match_types(vec![TokenType::Var]) {
+            self.var_declaration(lox)
+        } else {
+            self.statement(lox)
+        };
         if lox.had_error {
             self.synchronize();
             lox.had_error = false;
             return None;
         }
-        Some(temp)
+        result
     }
 
-    fn var_declaration(&mut self, lox: &mut Lox) -> Statement {
+    fn var_declaration(&mut self, lox: &mut Lox) -> Option<Statement> {
         let name = self
-            .consume(lox, TokenType::Identifier, "Expected a variable name")
-            .cloned();
+            .consume(lox, TokenType::Identifier, "Expected a variable name")?
+            .clone();
         let mut initializer = None;
         if (self.match_types(vec![TokenType::Equal])) {
             // TODO:here if this returned Some(Expression) it would be really nice
-            initializer = Some(self.expression(lox));
+            // done
+            initializer = Some(self.expression(lox)?)
         }
         self.consume(
             lox,
             TokenType::Semicolon,
             "Expect ';' after variable declaration.",
-        );
-        Statement::AssignStatement {
-            token: name,
+        )?;
+        Some(Statement::AssignStatement {
+            token: Some(name),
             expression: initializer,
-        }
+        })
     }
 
-    fn statement(&mut self, lox: &mut Lox) -> Statement {
+    fn statement(&mut self, lox: &mut Lox) -> Option<Statement> {
         if self.match_types(vec![TokenType::Print]) {
             return self.print_statement(lox);
         }
         if self.match_types(vec![TokenType::LeftBrace]) {
-            return Statement::BlockStatement(self.block_statement(lox));
+            return Some(Statement::BlockStatement(self.block_statement(lox)?));
         }
         if self.match_types(vec![TokenType::If]) {
             return self.if_statement(lox);
@@ -87,110 +90,112 @@ impl Parser {
         self.expression_statement(lox)
     }
 
-    fn return_statement(&mut self, lox: &mut Lox) -> Statement {
-        let return_token = self.previous_token().unwrap().clone();
+    fn return_statement(&mut self, lox: &mut Lox) -> Option<Statement> {
+        let return_token = self.previous_token()?.clone();
         let mut expr = None;
         if (!self.check(&TokenType::Semicolon)) {
-            expr = Some(self.expression(lox));
+            expr = Some(self.expression(lox)?);
         }
         self.consume(
             lox,
             TokenType::Semicolon,
             "Expected semicolon at the end of a return statement",
-        );
-        Statement::ReturnStatement {
+        )?;
+        Some(Statement::ReturnStatement {
             token: return_token,
             expr,
-        }
+        })
     }
 
-    fn fun_statement(&mut self, lox: &mut Lox) -> Statement {
+    fn fun_statement(&mut self, lox: &mut Lox) -> Option<Statement> {
         //TODO:here if consume returns None then that could be a point of return
+        //done
         let name = self
-            .consume(lox, TokenType::Identifier, "Expected a function name")
-            .cloned()
-            .unwrap();
+            .consume(lox, TokenType::Identifier, "Expected a function name")?
+            .clone();
         self.consume(
             lox,
             TokenType::LeftParen,
             "Expected left paren after the name of a function",
-        );
+        )?;
         let mut params = Vec::new();
         if (!self.check(&TokenType::RightParen)) {
-            if let Some(token) = self.consume(
-                lox,
-                TokenType::Identifier,
-                "Where is the fucking Identifier ? huh ... jackass",
-            ) {
-                params.push(token.clone());
-            }
-            while self.match_types(vec![TokenType::Comma]) {
-                if let Some(token) = self.consume(
+            params.push(
+                self.consume(
                     lox,
                     TokenType::Identifier,
                     "Where is the fucking Identifier ? huh ... jackass",
-                ) {
-                    params.push(token.clone());
-                }
+                )?
+                .clone(),
+            );
+            while self.match_types(vec![TokenType::Comma]) {
+                params.push(
+                    self.consume(
+                        lox,
+                        TokenType::Identifier,
+                        "Where is the fucking Identifier ? huh ... jackass",
+                    )?
+                    .clone(),
+                );
             }
         }
         self.consume(
             lox,
             TokenType::RightParen,
             "Expected right paren after all the function parameters",
-        );
+        )?;
 
         self.consume(
             lox,
             TokenType::LeftBrace,
             "Expected left curly brace after all the function parameters",
-        );
+        )?;
 
-        let body = self.block_statement(lox);
-        Statement::FunctionDeclaration {
+        let body = self.block_statement(lox)?;
+        Some(Statement::FunctionDeclaration {
             name,
             parameters: params,
             body,
-        }
+        })
     }
 
-    fn for_statement(&mut self, lox: &mut Lox) -> Statement {
+    fn for_statement(&mut self, lox: &mut Lox) -> Option<Statement> {
         self.consume(
             lox,
             TokenType::LeftParen,
             "Open paren was not found after the for keyword",
-        );
+        )?;
 
         let mut initializer: Option<Statement>;
         if self.match_types(vec![TokenType::Semicolon]) {
             initializer = None;
         } else if self.match_types(vec![TokenType::Var]) {
-            initializer = Some(self.var_declaration(lox));
+            initializer = Some(self.var_declaration(lox)?);
         } else {
-            initializer = Some(self.expression_statement(lox));
+            initializer = Some(self.expression_statement(lox)?);
         }
 
         let mut condition: Option<Expr> = None;
         if (!self.check(&TokenType::Semicolon)) {
-            condition = Some(self.expression(lox));
+            condition = Some(self.expression(lox)?);
         }
         self.consume(
             lox,
             TokenType::Semicolon,
             "Expected semicolon after initializer in for loop",
-        );
+        )?;
 
         let mut change: Option<Expr> = None;
         if (!self.check(&TokenType::RightParen)) {
-            change = Some(self.expression(lox));
+            change = Some(self.expression(lox)?);
         }
         self.consume(
             lox,
             TokenType::RightParen,
             "Expected closing paren after condition in for loop",
-        );
+        )?;
 
-        let body = self.statement(lox);
+        let body = self.statement(lox)?;
 
         let mut statements = Vec::new();
         if let Some(init) = initializer {
@@ -209,83 +214,81 @@ impl Parser {
             statement: Box::new(Statement::BlockStatement(body_and_change)),
         });
 
-        Statement::BlockStatement(statements)
+        Some(Statement::BlockStatement(statements))
     }
 
-    fn while_statement(&mut self, lox: &mut Lox) -> Statement {
+    fn while_statement(&mut self, lox: &mut Lox) -> Option<Statement> {
         self.consume(
             lox,
             TokenType::LeftParen,
             "Open paren was not found after the for keyword",
-        );
-        let condition = self.expression(lox);
-        self.consume(lox, TokenType::RightParen, "Closing paren was not found");
-        let statement = Box::new(self.statement(lox));
-        Statement::WhileStatement {
+        )?;
+        let condition = self.expression(lox)?;
+        self.consume(lox, TokenType::RightParen, "Closing paren was not found")?;
+        let statement = Box::new(self.statement(lox)?);
+        Some(Statement::WhileStatement {
             condition,
             statement,
-        }
+        })
     }
 
-    fn if_statement(&mut self, lox: &mut Lox) -> Statement {
+    fn if_statement(&mut self, lox: &mut Lox) -> Option<Statement> {
         self.consume(
             lox,
             TokenType::LeftParen,
             "Open paren was not found after the if keyword",
-        );
-        let condition = self.expression(lox);
-        self.consume(lox, TokenType::RightParen, "Closing paren was not found");
-        let ifblock = Box::new(self.statement(lox));
+        )?;
+        let condition = self.expression(lox)?;
+        self.consume(lox, TokenType::RightParen, "Closing paren was not found")?;
+        let ifblock = Box::new(self.statement(lox)?);
         let mut elseblock: Option<Box<Statement>> = None;
         if (self.match_types(vec![TokenType::Else])) {
-            elseblock = Some(Box::new(self.statement(lox)));
+            elseblock = Some(Box::new(self.statement(lox)?));
         }
-        Statement::IfStatement {
+        Some(Statement::IfStatement {
             condition,
             ifblock,
             elseblock,
-        }
+        })
     }
 
-    fn block_statement(&mut self, lox: &mut Lox) -> Vec<Statement> {
+    fn block_statement(&mut self, lox: &mut Lox) -> Option<Vec<Statement>> {
         let mut statements: Vec<Statement> = Vec::new();
         //TODO: Add check for bounds
-        while !self.is_at_end() && !self.check(&TokenType::RightBrace) {
-            if let Some(statement) = self.declaration(lox) {
-                statements.push(statement);
-            }
+        while !self.check(&TokenType::RightBrace) {
+            statements.push(self.declaration(lox)?);
         }
-        self.consume(lox, TokenType::RightBrace, "Expected '}' after a block");
-        statements
+        self.consume(lox, TokenType::RightBrace, "Expected '}' after a block")?;
+        Some(statements)
     }
 
-    fn print_statement(&mut self, lox: &mut Lox) -> Statement {
-        let expr = self.expression(lox);
-        self.consume(lox, TokenType::Semicolon, "Expect ';' after value.");
-        Statement::PrintStatement(expr)
+    fn print_statement(&mut self, lox: &mut Lox) -> Option<Statement> {
+        let expr = self.expression(lox)?;
+        self.consume(lox, TokenType::Semicolon, "Expect ';' after value.")?;
+        Some(Statement::PrintStatement(expr))
     }
 
-    fn expression_statement(&mut self, lox: &mut Lox) -> Statement {
-        let expr = self.expression(lox);
-        self.consume(lox, TokenType::Semicolon, "Expect ';' after expression.");
-        Statement::ExprStatement(expr)
+    fn expression_statement(&mut self, lox: &mut Lox) -> Option<Statement> {
+        let expr = self.expression(lox)?;
+        self.consume(lox, TokenType::Semicolon, "Expect ';' after expression.")?;
+        Some(Statement::ExprStatement(expr))
     }
 
     //expression
-    pub fn expression(&mut self, lox: &mut Lox) -> Expr {
+    pub fn expression(&mut self, lox: &mut Lox) -> Option<Expr> {
         self.assignment(lox)
     }
 
-    fn assignment(&mut self, lox: &mut Lox) -> Expr {
-        let variable = self.logical_or(lox);
+    fn assignment(&mut self, lox: &mut Lox) -> Option<Expr> {
+        let variable = self.logical_or(lox)?;
         if (self.match_types(vec![TokenType::Equal])) {
-            let line_no = self.previous_token().unwrap().line;
-            let remaining = self.assignment(lox);
+            let line_no = self.previous_token()?.line;
+            let remaining = self.assignment(lox)?;
             if let Expr::Variable { name } = variable {
-                return Expr::Assignment {
+                return Some(Expr::Assignment {
                     name,
                     value: Box::new(remaining),
-                };
+                });
             }
             let error = ErrorKind::WithLocation {
                 message: String::from("Cant assign to something that is not a variable"),
@@ -293,129 +296,130 @@ impl Parser {
                 col: None,
             };
             report(lox, error);
+            return None;
         }
-        variable
+        Some(variable)
     }
 
-    fn logical_or(&mut self, lox: &mut Lox) -> Expr {
-        let mut expr = self.logical_and(lox);
+    fn logical_or(&mut self, lox: &mut Lox) -> Option<Expr> {
+        let mut expr = self.logical_and(lox)?;
         while (self.match_types(vec![TokenType::Or])) {
-            let operation = self.previous_token().unwrap().clone();
-            let inner = self.logical_and(lox);
+            let operation = self.previous_token()?.clone();
+            let inner = self.logical_and(lox)?;
             expr = Expr::Logical {
                 left: Box::new(expr),
                 operator: operation,
                 right: Box::new(inner),
             };
         }
-        expr
+        Some(expr)
     }
 
-    fn logical_and(&mut self, lox: &mut Lox) -> Expr {
-        let mut expr = self.equality(lox);
+    fn logical_and(&mut self, lox: &mut Lox) -> Option<Expr> {
+        let mut expr = self.equality(lox)?;
         while (self.match_types(vec![TokenType::And])) {
-            let operation = self.previous_token().unwrap().clone();
-            let inner = self.equality(lox);
+            let operation = self.previous_token()?.clone();
+            let inner = self.equality(lox)?;
             expr = Expr::Logical {
                 left: Box::new(expr),
                 operator: operation,
                 right: Box::new(inner),
             };
         }
-        expr
+        Some(expr)
     }
 
-    fn equality(&mut self, lox: &mut Lox) -> Expr {
-        let mut expr = self.comparison(lox);
+    fn equality(&mut self, lox: &mut Lox) -> Option<Expr> {
+        let mut expr = self.comparison(lox)?;
         while (self.match_types(vec![TokenType::BangEqual, TokenType::EqualEqual])) {
-            let operation = self.previous_token().unwrap().clone();
-            let inner = self.comparison(lox);
+            let operation = self.previous_token()?.clone();
+            let inner = self.comparison(lox)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator: operation,
                 right: Box::new(inner),
             };
         }
-        expr
+        Some(expr)
     }
 
-    fn comparison(&mut self, lox: &mut Lox) -> Expr {
-        let mut expr = self.term(lox);
+    fn comparison(&mut self, lox: &mut Lox) -> Option<Expr> {
+        let mut expr = self.term(lox)?;
         while (self.match_types(vec![
             TokenType::Less,
             TokenType::LessEqual,
             TokenType::Greater,
             TokenType::GreaterEqual,
         ])) {
-            let operation = self.previous_token().unwrap().clone();
-            let inner = self.term(lox);
+            let operation = self.previous_token()?.clone();
+            let inner = self.term(lox)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator: operation,
                 right: Box::new(inner),
             };
         }
-        expr
+        Some(expr)
     }
 
-    fn term(&mut self, lox: &mut Lox) -> Expr {
-        let mut expr = self.factor(lox);
+    fn term(&mut self, lox: &mut Lox) -> Option<Expr> {
+        let mut expr = self.factor(lox)?;
         while (self.match_types(vec![TokenType::Plus, TokenType::Minus])) {
-            let operation = self.previous_token().unwrap().clone();
-            let inner = self.factor(lox);
+            let operation = self.previous_token()?.clone();
+            let inner = self.factor(lox)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator: operation,
                 right: Box::new(inner),
             };
         }
-        expr
+        Some(expr)
     }
 
-    fn factor(&mut self, lox: &mut Lox) -> Expr {
-        let mut expr = self.unary(lox);
+    fn factor(&mut self, lox: &mut Lox) -> Option<Expr> {
+        let mut expr = self.unary(lox)?;
         while (self.match_types(vec![TokenType::Star, TokenType::Slash])) {
-            let operation = self.previous_token().unwrap().clone();
-            let inner = self.unary(lox);
+            let operation = self.previous_token()?.clone();
+            let inner = self.unary(lox)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator: operation,
                 right: Box::new(inner),
             };
         }
-        expr
+        Some(expr)
     }
 
-    fn unary(&mut self, lox: &mut Lox) -> Expr {
+    fn unary(&mut self, lox: &mut Lox) -> Option<Expr> {
         if self.match_types(vec![TokenType::Bang, TokenType::Minus]) {
-            let operation = self.previous_token().unwrap().clone();
-            let mut inner = self.unary(lox);
+            let operation = self.previous_token()?.clone();
+            let mut inner = self.unary(lox)?;
             inner = Expr::Unary {
                 operator: operation,
                 expression: Box::new(inner),
             };
-            inner
+            Some(inner)
         } else {
             self.call(lox)
         }
     }
 
-    fn call(&mut self, lox: &mut Lox) -> Expr {
-        let mut expr = self.primary(lox);
+    fn call(&mut self, lox: &mut Lox) -> Option<Expr> {
+        let mut expr = self.primary(lox)?;
         loop {
             if self.match_types(vec![TokenType::LeftParen]) {
-                expr = self.complete_call(lox, expr);
+                expr = self.complete_call(lox, expr)?;
             } else {
                 break;
             }
         }
-        expr
+        Some(expr)
     }
 
-    fn complete_call(&mut self, lox: &mut Lox, callee: Expr) -> Expr {
+    fn complete_call(&mut self, lox: &mut Lox, callee: Expr) -> Option<Expr> {
         let mut arguments = Vec::new();
         if (!self.check(&TokenType::RightParen)) {
-            let first_argument = self.expression(lox);
+            let first_argument = self.expression(lox)?;
             arguments.push(first_argument);
             while (self.match_types(vec![TokenType::Comma])) {
                 if arguments.len() > 255 {
@@ -424,7 +428,7 @@ impl Parser {
                     );
                     break;
                 }
-                arguments.push(self.expression(lox))
+                arguments.push(self.expression(lox)?)
             }
         }
         let paren_token = self
@@ -432,49 +436,49 @@ impl Parser {
                 lox,
                 TokenType::RightParen,
                 "Right paren is expected at the end of a function call",
-            )
-            .unwrap();
-        Expr::Call {
+            )?
+            .clone();
+        Some(Expr::Call {
             callee: Box::new(callee),
             arguments,
             paren: paren_token.clone(),
-        }
+        })
     }
 
-    fn primary(&mut self, lox: &mut Lox) -> Expr {
+    fn primary(&mut self, lox: &mut Lox) -> Option<Expr> {
         if self.match_types(vec![TokenType::Number, TokenType::String, TokenType::Nil]) {
-            return Expr::Literal {
+            return Some(Expr::Literal {
                 value: self.previous_token().unwrap().literal.clone(),
-            };
+            });
         }
 
         if self.match_types(vec![TokenType::False]) {
-            return Expr::Literal {
+            return Some(Expr::Literal {
                 value: Some(Literal::Bool(false)),
-            };
+            });
         }
 
         if self.match_types(vec![TokenType::True]) {
-            return Expr::Literal {
+            return Some(Expr::Literal {
                 value: Some(Literal::Bool(true)),
-            };
+            });
         }
 
         if self.match_types(vec![TokenType::Identifier]) {
-            return Expr::Variable {
+            return Some(Expr::Variable {
                 name: self.previous_token().cloned().unwrap(),
-            };
+            });
         }
 
         if self.match_types(vec![TokenType::LeftParen]) {
-            let expr = self.expression(lox);
-            self.consume(lox, TokenType::RightParen, "Expect ')' after expression.");
-            return Expr::Grouping {
+            let expr = self.expression(lox)?;
+            self.consume(lox, TokenType::RightParen, "Expect ')' after expression.")?;
+            return Some(Expr::Grouping {
                 expression: Box::new(expr),
-            };
+            });
         }
 
-        let token = self.peek().unwrap();
+        let token = self.peek()?;
         report(
             lox,
             ErrorKind::WithLocation {
@@ -484,7 +488,7 @@ impl Parser {
             },
         );
         //TODO:just return None here this is one more source of error
-        Expr::Literal { value: None }
+        None
     }
 
     //helpers

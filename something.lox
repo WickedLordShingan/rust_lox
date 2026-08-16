@@ -1,9 +1,44 @@
-fun fib(n) {
-  if (n <= 1)
-    return n;
-  return fib(n - 2) + fib(n - 1);
+fun something(a, b) {
+  if (a == 0) {
+    return b;
+  } else {
+    return 1 + something(a - 1, b);
+  }
 }
 
-for (var i = 0; i < 20; i = i + 1) {
-  print fib(i);
-}
+print something(2, 5);
+
+// var x = "global";
+// fun show() { print x; }
+// fun runInScope() {
+//   var x = "local";
+//   show(); // should print "global" — show was declared where x="global"
+// }
+// runInScope();
+
+// fun make_counter() {
+//   var count = 0;
+//
+//   fun increment() {
+//     print count;
+//     count = count + 1;
+//   }
+//
+//   return increment;
+// }
+//
+// var c1 = make_counter();
+// var c2 = make_counter();
+//
+// c1();
+// c1();
+// c1();
+// c1();
+// c1();
+// c1();
+//
+// c2();
+// c2();
+// c2();
+// c2();
+// c2();
