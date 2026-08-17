@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    fmt::{self, Display},
+    fmt::{self, Display, write},
     rc::Rc,
 };
 
@@ -10,7 +10,7 @@ use crate::{
     token::{Literal, Token},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Value {
     Str(String),
     Num(f64),
@@ -21,6 +21,11 @@ pub enum Value {
         params: Vec<Token>,
         body: Rc<Vec<Statement>>,
         closure: Rc<RefCell<Environment>>,
+    },
+    Foreign {
+        arity: usize,
+        name: String,
+        implementation: Rc<dyn Fn(&[Value]) -> Result<Value, String>>,
     },
 }
 
@@ -47,7 +52,14 @@ impl Display for Value {
             }
             Self::Bool(bool) => write!(f, "Boolean : {bool}"),
             Self::Nil => write!(f, "nandemonai desuga"),
-            _ => todo!(),
+            Self::Function { name, .. } => write!(f, "<fn> {name}"),
+            Self::Foreign {
+                arity,
+                name,
+                implementation: _,
+            } => {
+                return write!(f, "arity : {arity} name : {name}");
+            }
         }
     }
 }

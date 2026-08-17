@@ -6,11 +6,11 @@ pub enum ErrorKind {
         line: u32,
         col: Option<u32>,
     },
-    WithRange {
-        message: String,
-        start_line: u32,
-        end_line: u32,
-    },
+    // WithRange {
+    //     message: String,
+    //     start_line: u32,
+    //     end_line: u32,
+    // },
 }
 
 pub struct Lox {
@@ -38,13 +38,13 @@ pub fn report(lox: &mut Lox, error: ErrorKind) {
             Some(col) => eprintln!("[line {line}, col {col}] Error: {message}"),
             None => eprintln!("[line {line}] Error: {message}"),
         },
-        ErrorKind::WithRange {
-            message,
-            start_line,
-            end_line,
-        } => {
-            eprintln!("[lines {start_line}–{end_line}] Error: {message}");
-        }
+        // ErrorKind::WithRange {
+        //     message,
+        //     start_line,
+        //     end_line,
+        // } => {
+        //     eprintln!("[lines {start_line}–{end_line}] Error: {message}");
+        // }
     }
     //TODO: why is there another had_error = true here?
     lox.had_error = true;

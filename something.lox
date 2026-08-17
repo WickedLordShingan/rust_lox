@@ -7,6 +7,9 @@ fun something(a, b) {
 }
 
 print something(2, 5);
+var a = CLOCK();
+
+print a;
 
 // var x = "global";
 // fun show() { print x; }

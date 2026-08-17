@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fmt::Arguments;
 
 use crate::ast::{Expr, Statement};
@@ -15,6 +16,7 @@ pub struct Interpreter {
     // globals: Environment,
     current_env: Rc<RefCell<Environment>>,
     fn_depth: i32,
+    ffi: HashMap<String, Value>,
 }
 
 impl Interpreter {
@@ -23,7 +25,24 @@ impl Interpreter {
             // globals: Environment::init(),
             current_env: Environment::init(),
             fn_depth: 0,
+            ffi: HashMap::new(),
         }
+    }
+
+    pub fn add_foreign_function(
+        &mut self,
+        name: String,
+        arity: usize,
+        implementation: Rc<dyn Fn(&[Value]) -> Result<Value, String>>,
+    ) {
+        self.ffi.insert(
+            name.clone(),
+            Value::Foreign {
+                arity,
+                name,
+                implementation,
+            },
+        );
     }
 
     pub fn interpret(&mut self, statements: &Vec<Statement>, lox: &mut Lox) {
@@ -229,15 +248,55 @@ impl Interpreter {
         lox: &mut Lox,
     ) -> Option<Value> {
         let callee = self.evaluate(callee, lox)?;
-        if let Value::Function {
-            name,
-            params,
-            body,
-            closure,
-        } = &callee
-        {
-            return self.call_function(paren, name, params, body, arguments, closure, lox);
+        match &callee {
+            Value::Function {
+                name,
+                params,
+                body,
+                closure,
+            } => return self.call_function(paren, name, params, body, arguments, closure, lox),
+            Value::Foreign {
+                arity,
+                name,
+                implementation,
+            } => {
+                if (*arity != arguments.len()) {
+                    let error = ErrorKind::WithLocation {
+                        message: format!(
+                            "Function {} expected {} arguments but got {} arguments",
+                            name,
+                            arity,
+                            arguments.len(),
+                        ),
+                        line: paren.line as u32,
+                        col: None,
+                    };
+                    report(lox, error);
+                    return None;
+                }
+
+                let evaluated: Vec<Value> = arguments
+                    .iter()
+                    .map(|arg| self.evaluate(arg, lox))
+                    .collect::<Option<Vec<_>>>()?;
+                match implementation(&evaluated) {
+                    Ok(v) => return Some(v),
+                    Err(msg) => {
+                        report(
+                            lox,
+                            ErrorKind::WithLocation {
+                                message: msg,
+                                line: paren.line as u32,
+                                col: None,
+                            },
+                        );
+                        return None;
+                    }
+                }
+            }
+            _ => (),
         }
+        //here do ffi stuff with code and variables
         let error = ErrorKind::WithLocation {
             message: String::from("Cant call random shit bruh need a fucking function"),
             line: paren.line as u32,
@@ -342,6 +401,9 @@ impl Interpreter {
         match Environment::lookup(&self.current_env, &identifier.lexeme) {
             Some(val) => Some(val.clone()),
             None => {
+                if let Some(fun_val) = self.ffi.get(&identifier.lexeme) {
+                    return Some(fun_val.clone());
+                }
                 report(
                     lox,
                     ErrorKind::WithLocation {
@@ -576,5 +638,6 @@ fn is_truthy(value: &Value) -> bool {
             body,
             closure,
         } => true,
+        _ => true,
     }
 }

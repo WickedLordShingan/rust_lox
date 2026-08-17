@@ -4,7 +4,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub type Env = Rc<RefCell<Environment>>;
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct Environment {
     pub values: HashMap<String, Value>,
     pub parent: Option<Env>,

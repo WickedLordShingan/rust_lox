@@ -61,5 +61,16 @@ fn run(lox: &mut Lox, source: &str) {
     }
 
     let mut interpreter = Interpreter::init();
+    let name = String::from("CLOCK");
+    let arity = 0;
+    let implementation = std::rc::Rc::new(|_args: &[crate::value::Value]| {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+        Ok(crate::value::Value::Num(secs))
+    });
+    interpreter.add_foreign_function(name, arity, implementation);
     interpreter.interpret(&stmts, lox);
 }
